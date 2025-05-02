@@ -21,9 +21,8 @@ To enable better visibility into customer behavior and operational performance, 
 
 ## 📐 Architecture
 
-The architecture follows a structured, scalable, and layered approach, as illustrated below:
-
-![Customer 360 Architecture](f03c55d7-6947-4575-9609-78be060bcc4f.jpg)
+The architecture follows a structured, scalable, and layered approach.
+Find Architecture Diagram in the repo.
 
 ### 🔹 Bronze Layer (Raw)
 - Raw CSV data is ingested from external sources and stored in **ADLS Gen2 (Bronze Folder)**.
