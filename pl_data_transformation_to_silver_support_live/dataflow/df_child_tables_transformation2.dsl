@@ -1,0 +1,62 @@
+source(output(
+		LoyaltyID as short,
+		DateTime as timestamp,
+		PointsChange as short,
+		Reason as string
+	),
+	useSchema: false,
+	allowSchemaDrift: true,
+	validateSchema: false,
+	ignoreNoFilesFound: false,
+	format: 'delimited',
+	fileSystem: 'project3-container',
+	folderPath: 'Bronze_Layer',
+	fileName: 'LoyaltyTransactions.csv',
+	columnDelimiter: ',',
+	escapeChar: '\\',
+	quoteChar: '\"',
+	columnNamesAsHeader: true) ~> LoyaltyTransactions
+LoyaltyTransactions filter(!isNull(LoyaltyID)) ~> DropNullRows
+DropNullRows aggregate(groupBy(LoyaltyID,
+		DateTime,
+		PointsChange,
+		Reason),
+	Count = count(1)) ~> RemoveDuplicateRows
+RemoveDuplicateRows select(mapColumn(
+		LoyaltyID,
+		DateTime,
+		PointsChange,
+		Reason
+	),
+	skipDuplicateMapInputs: true,
+	skipDuplicateMapOutputs: true) ~> DropDummyCol
+DropDummyCol derive(DateTime = iif(isNull(DateTime), toTimestamp('1900-01-01 00:00:00.000'), DateTime),
+		PointsChange = iif(isNull(PointsChange), toShort('-1'), PointsChange),
+		Reason = iif(isNull(trim(Reason)), "Unknown", Reason)) ~> FillNullValues
+FillNullValues alterRow(upsertIf(1==1)) ~> GiveUpsertPermissions
+GiveUpsertPermissions sink(allowSchemaDrift: true,
+	validateSchema: false,
+	input(
+		LoyaltyID as integer,
+		DateTime as timestamp,
+		PointsChange as integer,
+		Reason as string
+	),
+	format: 'table',
+	store: 'sqlserver',
+	schemaName: 'dbo',
+	tableName: 'LoyaltyTransactions',
+	insertable: false,
+	updateable: false,
+	deletable: false,
+	upsertable: true,
+	keys:['LoyaltyID'],
+	skipDuplicateMapInputs: true,
+	skipDuplicateMapOutputs: true,
+	errorHandlingOption: 'stopOnFirstError',
+	mapColumn(
+		LoyaltyID,
+		DateTime,
+		PointsChange,
+		Reason
+	)) ~> AzureSQLDBOnlineTransactions

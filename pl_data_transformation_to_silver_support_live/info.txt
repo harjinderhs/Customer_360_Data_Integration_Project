@@ -1,0 +1,6 @@
+selected resource name:		pl_data_transformation_to_silver
+selected resource type:		pipeline
+workspace name:			wsp-hsingh-synapse
+workspace location:		australiaeast
+subscription id:		ca6fef37-a187-4dcb-b638-ab3267c398e1
+time of download (UTC):		Fri, 02 May 2025 11:02:30 GMT

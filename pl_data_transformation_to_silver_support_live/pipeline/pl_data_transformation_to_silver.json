@@ -1,0 +1,105 @@
+{
+    "name": "pl_data_transformation_to_silver",
+    "properties": {
+        "activities": [
+            {
+                "name": "df_parent_tables_transformation",
+                "type": "ExecuteDataFlow",
+                "dependsOn": [],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "dataflow": {
+                        "referenceName": "df_parent_tables_transformation",
+                        "type": "DataFlowReference"
+                    },
+                    "compute": {
+                        "coreCount": 8,
+                        "computeType": "General"
+                    },
+                    "traceLevel": "None",
+                    "cacheSinks": {
+                        "firstRowOnly": true
+                    }
+                }
+            },
+            {
+                "name": "df_child_tables_transformation",
+                "type": "ExecuteDataFlow",
+                "dependsOn": [
+                    {
+                        "activity": "df_parent_tables_transformation",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "dataflow": {
+                        "referenceName": "df_child_tables_transformation",
+                        "type": "DataFlowReference"
+                    },
+                    "compute": {
+                        "coreCount": 8,
+                        "computeType": "General"
+                    },
+                    "traceLevel": "None",
+                    "cacheSinks": {
+                        "firstRowOnly": true
+                    }
+                }
+            },
+            {
+                "name": "df_child_tables_transformation2",
+                "type": "ExecuteDataFlow",
+                "dependsOn": [
+                    {
+                        "activity": "df_child_tables_transformation",
+                        "dependencyConditions": [
+                            "Succeeded"
+                        ]
+                    }
+                ],
+                "policy": {
+                    "timeout": "0.12:00:00",
+                    "retry": 0,
+                    "retryIntervalInSeconds": 30,
+                    "secureOutput": false,
+                    "secureInput": false
+                },
+                "userProperties": [],
+                "typeProperties": {
+                    "dataflow": {
+                        "referenceName": "df_child_tables_transformation2",
+                        "type": "DataFlowReference"
+                    },
+                    "compute": {
+                        "coreCount": 8,
+                        "computeType": "General"
+                    },
+                    "traceLevel": "None",
+                    "cacheSinks": {
+                        "firstRowOnly": true
+                    }
+                }
+            }
+        ],
+        "annotations": [],
+        "lastPublishTime": "2025-04-30T05:26:41Z"
+    },
+    "type": "Microsoft.Synapse/workspaces/pipelines"
+}

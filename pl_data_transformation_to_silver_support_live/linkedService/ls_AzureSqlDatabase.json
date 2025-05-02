@@ -1,0 +1,28 @@
+{
+    "name": "ls_AzureSqlDatabase",
+    "type": "Microsoft.Synapse/workspaces/linkedservices",
+    "properties": {
+        "annotations": [],
+        "type": "AzureSqlDatabase",
+        "typeProperties": {
+            "server": "hsinghsqlserver.database.windows.net",
+            "database": "hsinghsqldb",
+            "encrypt": "mandatory",
+            "trustServerCertificate": false,
+            "authenticationType": "SQL",
+            "userName": "hsingh2025",
+            "password": {
+                "type": "AzureKeyVaultSecret",
+                "store": {
+                    "referenceName": "ls_AzureKeyVault",
+                    "type": "LinkedServiceReference"
+                },
+                "secretName": "azure-sqldb-password"
+            }
+        },
+        "connectVia": {
+            "referenceName": "AutoResolveIntegrationRuntime",
+            "type": "IntegrationRuntimeReference"
+        }
+    }
+}

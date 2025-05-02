@@ -1,0 +1,289 @@
+source(output(
+		OrderID as short,
+		CustomerID as short,
+		ProductID as short,
+		DateTime as timestamp,
+		PaymentMethod as string,
+		Amount as double,
+		Status as string
+	),
+	useSchema: false,
+	allowSchemaDrift: true,
+	validateSchema: false,
+	ignoreNoFilesFound: false,
+	format: 'delimited',
+	fileSystem: 'project3-container',
+	folderPath: 'Bronze_Layer',
+	fileName: 'OnlineTransactions.csv',
+	columnDelimiter: ',',
+	escapeChar: '\\',
+	quoteChar: '\"',
+	columnNamesAsHeader: true) ~> OnlineTransactions
+source(output(
+		TransactionID as short,
+		CustomerID as short,
+		StoreID as short,
+		DateTime as timestamp,
+		Amount as double,
+		PaymentMethod as string
+	),
+	useSchema: false,
+	allowSchemaDrift: true,
+	validateSchema: false,
+	ignoreNoFilesFound: false,
+	format: 'delimited',
+	fileSystem: 'project3-container',
+	folderPath: 'Bronze_Layer',
+	fileName: 'InStoreTransactions.csv',
+	columnDelimiter: ',',
+	escapeChar: '\\',
+	quoteChar: '\"',
+	columnNamesAsHeader: true) ~> InStoreTransactions
+source(output(
+		InteractionID as short,
+		CustomerID as short,
+		DateTime as timestamp,
+		AgentID as short,
+		IssueType as string,
+		ResolutionStatus as string
+	),
+	useSchema: false,
+	allowSchemaDrift: true,
+	validateSchema: false,
+	ignoreNoFilesFound: false,
+	format: 'delimited',
+	fileSystem: 'project3-container',
+	folderPath: 'Bronze_Layer',
+	fileName: 'CustomerServiceInteractions.csv',
+	columnDelimiter: ',',
+	escapeChar: '\\',
+	quoteChar: '\"',
+	columnNamesAsHeader: true) ~> CustomerServiceInteractions
+source(output(
+		LoyaltyID as short,
+		CustomerID as short,
+		PointsEarned as short,
+		TierLevel as string,
+		JoinDate as date
+	),
+	useSchema: false,
+	allowSchemaDrift: true,
+	validateSchema: false,
+	ignoreNoFilesFound: false,
+	format: 'delimited',
+	fileSystem: 'project3-container',
+	folderPath: 'Bronze_Layer',
+	fileName: 'LoyaltyAccounts.csv',
+	columnDelimiter: ',',
+	escapeChar: '\\',
+	quoteChar: '\"',
+	columnNamesAsHeader: true) ~> LoyaltyAccounts
+OnlineTransactions filter(!isNull(OrderID)) ~> DropNullRows
+DropNullRows aggregate(groupBy(OrderID,
+		CustomerID,
+		ProductID,
+		DateTime,
+		PaymentMethod,
+		Amount,
+		Status),
+	Count = count(1)) ~> RemoveDuplicateRows
+RemoveDuplicateRows select(mapColumn(
+		OrderID,
+		CustomerID,
+		ProductID,
+		DateTime,
+		PaymentMethod,
+		Amount,
+		Status
+	),
+	skipDuplicateMapInputs: true,
+	skipDuplicateMapOutputs: true) ~> DropDummyCol
+DropDummyCol derive(DateTime = iif(isNull(DateTime), toTimestamp('1900-01-01 00:00:00.000'), DateTime),
+		PaymentMethod = iif(isNull(trim(PaymentMethod)), 'Unknown', PaymentMethod),
+		Amount = iif(isNull(Amount), toDouble(-1), Amount),
+		Status = iif(isNull(trim(Status)), 'Unknown', Status)) ~> FillNullValues
+FillNullValues alterRow(upsertIf(1==1)) ~> GiveUpsertPermissions
+CustomerServiceInteractions filter(!isNull(InteractionID)) ~> DropNullRows3
+InStoreTransactions filter(!isNull(TransactionID)) ~> DropNullRows2
+DropNullRows2 aggregate(groupBy(TransactionID,
+		CustomerID,
+		StoreID,
+		DateTime,
+		Amount,
+		PaymentMethod),
+	count = count(1)) ~> RemoveDuplicateRows2
+RemoveDuplicateRows2 select(mapColumn(
+		TransactionID,
+		CustomerID,
+		StoreID,
+		DateTime,
+		Amount,
+		PaymentMethod
+	),
+	skipDuplicateMapInputs: true,
+	skipDuplicateMapOutputs: true) ~> DropDummyCol2
+DropDummyCol2 derive(DateTime = iif(isNull(DateTime), toTimestamp('1900-01-01 00:00:00.000'), DateTime),
+		Amount = iif(isNull(Amount), toDouble(-1), Amount),
+		PaymentMethod = iif(isNull(trim(PaymentMethod)), 'Unknown', PaymentMethod)) ~> FillNullValues2
+FillNullValues2 alterRow(upsertIf(1==1)) ~> GiveUpsertPermissions2
+DropNullRows3 aggregate(groupBy(InteractionID,
+		CustomerID,
+		DateTime,
+		AgentID,
+		IssueType,
+		ResolutionStatus),
+	Count = count(1)) ~> RemoveDuplicateRows3
+RemoveDuplicateRows3 select(mapColumn(
+		InteractionID,
+		CustomerID,
+		DateTime,
+		AgentID,
+		IssueType,
+		ResolutionStatus
+	),
+	skipDuplicateMapInputs: true,
+	skipDuplicateMapOutputs: true) ~> DropDummyCol3
+DropDummyCol3 derive(DateTime = iif(isNull(DateTime), toTimestamp('1900-01-01 00:00:00.000'), DateTime),
+		IssueType = iif(isNull(trim(IssueType)), 'N/A', IssueType),
+		ResolutionStatus = iif(isNull(trim(ResolutionStatus)), 'Unknown', ResolutionStatus)) ~> FillNullValues3
+FillNullValues3 alterRow(upsertIf(1==1)) ~> GiveUpsertPermissions3
+LoyaltyAccounts filter(!isNull(LoyaltyID)) ~> DropNullRows4
+DropNullRows4 aggregate(groupBy(LoyaltyID,
+		CustomerID,
+		PointsEarned,
+		TierLevel,
+		JoinDate),
+	Count = count(1)) ~> RemoveDuplicateRows4
+RemoveDuplicateRows4 select(mapColumn(
+		LoyaltyID,
+		CustomerID,
+		PointsEarned,
+		TierLevel,
+		JoinDate
+	),
+	skipDuplicateMapInputs: true,
+	skipDuplicateMapOutputs: true) ~> DropDummyCol4
+DropDummyCol4 derive(PointsEarned = iif(isNull(PointsEarned), toShort(-1) , PointsEarned),
+		TierLevel = iif(isNull(trim(TierLevel)), 'Unknown', TierLevel),
+		JoinDate = iif(isNull(JoinDate), toDate('1900-01-01'), JoinDate)) ~> FillNullValues4
+FillNullValues4 alterRow(upsertIf(1==1)) ~> GiveUpsertPermissions4
+GiveUpsertPermissions sink(allowSchemaDrift: true,
+	validateSchema: false,
+	input(
+		OrderID as integer,
+		CustomerID as integer,
+		ProductID as integer,
+		DateTime as timestamp,
+		PaymentMethod as string,
+		Amount as decimal(10,2),
+		Status as string
+	),
+	format: 'table',
+	store: 'sqlserver',
+	schemaName: 'dbo',
+	tableName: 'OnlineTransactions',
+	insertable: false,
+	updateable: false,
+	deletable: false,
+	upsertable: true,
+	keys:['OrderID'],
+	skipDuplicateMapInputs: true,
+	skipDuplicateMapOutputs: true,
+	errorHandlingOption: 'stopOnFirstError',
+	mapColumn(
+		OrderID,
+		CustomerID,
+		ProductID,
+		DateTime,
+		PaymentMethod,
+		Amount,
+		Status
+	)) ~> AzureSQLDBOnlineTransactions
+GiveUpsertPermissions2 sink(allowSchemaDrift: true,
+	validateSchema: false,
+	input(
+		TransactionID as integer,
+		CustomerID as integer,
+		StoreID as integer,
+		DateTime as timestamp,
+		Amount as decimal(10,2),
+		PaymentMethod as string
+	),
+	format: 'table',
+	store: 'sqlserver',
+	schemaName: 'dbo',
+	tableName: 'InStoreTransactions',
+	insertable: false,
+	updateable: false,
+	deletable: false,
+	upsertable: true,
+	keys:['TransactionID'],
+	skipDuplicateMapInputs: true,
+	skipDuplicateMapOutputs: true,
+	errorHandlingOption: 'stopOnFirstError',
+	mapColumn(
+		TransactionID,
+		CustomerID,
+		StoreID,
+		DateTime,
+		Amount,
+		PaymentMethod
+	)) ~> AzureSQLDBInStoreTransactions
+GiveUpsertPermissions3 sink(allowSchemaDrift: true,
+	validateSchema: false,
+	input(
+		InteractionID as integer,
+		CustomerID as integer,
+		DateTime as timestamp,
+		AgentID as integer,
+		IssueType as string,
+		ResolutionStatus as string
+	),
+	format: 'table',
+	store: 'sqlserver',
+	schemaName: 'dbo',
+	tableName: 'CustomerServiceInteractions',
+	insertable: false,
+	updateable: false,
+	deletable: false,
+	upsertable: true,
+	keys:['InteractionID'],
+	skipDuplicateMapInputs: true,
+	skipDuplicateMapOutputs: true,
+	errorHandlingOption: 'stopOnFirstError',
+	mapColumn(
+		InteractionID,
+		CustomerID,
+		DateTime,
+		AgentID,
+		IssueType,
+		ResolutionStatus
+	)) ~> AzureSQLDBProducts
+GiveUpsertPermissions4 sink(allowSchemaDrift: true,
+	validateSchema: false,
+	input(
+		LoyaltyID as integer,
+		CustomerID as integer,
+		PointsEarned as integer,
+		TierLevel as string,
+		JoinDate as date
+	),
+	format: 'table',
+	store: 'sqlserver',
+	schemaName: 'dbo',
+	tableName: 'LoyaltyAccounts',
+	insertable: false,
+	updateable: false,
+	deletable: false,
+	upsertable: true,
+	keys:['LoyaltyID'],
+	skipDuplicateMapInputs: true,
+	skipDuplicateMapOutputs: true,
+	errorHandlingOption: 'stopOnFirstError',
+	mapColumn(
+		LoyaltyID,
+		CustomerID,
+		PointsEarned,
+		TierLevel,
+		JoinDate
+	)) ~> AzureSQLDBStores
